@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: restaurant-chatbot
+    env: node
+    plan: starter
+    buildCommand: npm install
+    startCommand: npm start

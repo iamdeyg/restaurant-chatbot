@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Restaurant ChatBot</title>
+    <style>
+      body {
+        font-family: "Arial", sans-serif;
+        background-color: #f4f4f9;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        color: #333;
+      }
+
+      h2 {
+        color: #444;
+        text-align: center;
+        margin-bottom: 20px;
+      }
+
+      #chatBox {
+        width: 100%;
+        max-width: 400px;
+        height: 500px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        padding: 20px;
+        background-color: #fff;
+        overflow-y: scroll;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+
+      .message {
+        padding: 12px;
+        margin: 8px 0;
+        border-radius: 10px;
+        max-width: 80%;
+        display: inline-block;
+      }
+
+      .user {
+        background-color: #d1e7ff;
+        align-self: flex-end;
+        text-align: right;
+      }
+
+      .bot {
+        background-color: #f1f1f1;
+        align-self: flex-start;
+        text-align: left;
+      }
+
+      #inputBox {
+        width: 100%;
+        padding: 10px;
+        margin-top: 10px;
+        border: 1px solid #ddd;
+        border-radius: 20px;
+        font-size: 16px;
+        background-color: #f9f9f9;
+        color: #333;
+      }
+
+      button {
+        padding: 10px 20px;
+        background-color: #007bff;
+        border: none;
+        border-radius: 5px;
+        color: white;
+        cursor: pointer;
+        margin-top: 10px;
+        font-size: 16px;
+      }
+
+      button:hover {
+        background-color: #0056b3;
+      }
+
+      .message-box {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .message-box .message {
+        margin-bottom: 12px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div>
+      <h2>Restaurant ChatBot</h2>
+      <div id="chatBox" class="message-box"></div>
+      <div>
+        <input
+          type="text"
+          id="inputBox"
+          placeholder="Type here..."
+          onkeydown="if(event.key === 'Enter'){sendMessage()}"
+        />
+        <button onclick="sendMessage()">Send</button>
+      </div>
+    </div>
+
+    <script>
+      let currentOrder = [];
+      let session = {}; // Store session data locally (not used directly in fetch requests)
+
+      // Function to send messages
+      function sendMessage() {
+        const input = document.getElementById("inputBox").value;
+        document.getElementById("inputBox").value = ""; // clear the input box
+        displayMessage(input, "user"); // display user message
+        handleBotResponse(input); // process bot response
+      }
+
+      // Function to display messages in the chat
+      function displayMessage(message, sender) {
+        const chatBox = document.getElementById("chatBox");
+        const div = document.createElement("div");
+        div.classList.add("message", sender);
+        div.innerText = message;
+        chatBox.appendChild(div);
+        chatBox.scrollTop = chatBox.scrollHeight; // scroll to the bottom
+      }
+
+      // Function to handle bot responses and send requests to the backend
+      function handleBotResponse(input) {
+        if (!session.state) {
+          session.state = "start"; // Initialize state
+          displayMessage(
+            "Select 1 to Place an order\nSelect 99 to checkout order\nSelect 98 to see order history\nSelect 97 to see current order\nSelect 0 to cancel order",
+            "bot"
+          );
+          return;
+        }
+
+        switch (session.state) {
+          case "start":
+            if (input == "1") {
+              session.state = "order";
+              displayMessage(
+                "Here are the items available for order:\n1. Burger - $5\n2. Pizza - $8\n3. Pasta - $7",
+                "bot"
+              );
+            } else if (input == "99") {
+              // Send checkout request
+              fetch("http://localhost:9000/checkout", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  sessionId: sessionId, // Send the session ID (handled by express-session)
+                }),
+              })
+                .then((response) => response.json())
+                .then((data) => {
+                  displayMessage(data.message, "bot"); // Show bot response
+                })
+                .catch((error) => console.error("Error:", error));
+              session.state = "start";
+            } else if (input == "98") {
+              displayMessage("Your order history: None", "bot");
+              session.state = "start";
+            } else if (input == "97") {
+              displayMessage("Current order: None", "bot");
+              session.state = "start";
+            } else if (input == "0") {
+              displayMessage("No order to cancel", "bot");
+              session.state = "start";
+            } else {
+              displayMessage("Invalid option. Please select again.", "bot");
+            }
+            break;
+
+          case "order":
+            // Simulate adding items to an order
+            if (input == "1") {
+              currentOrder.push("Burger");
+              displayMessage(
+                "Burger added to your order. You can add more or type 99 to checkout.",
+                "bot"
+              );
+            } else if (input == "2") {
+              currentOrder.push("Pizza");
+              displayMessage(
+                "Pizza added to your order. You can add more or type 99 to checkout.",
+                "bot"
+              );
+            } else if (input == "3") {
+              currentOrder.push("Pasta");
+              displayMessage(
+                "Pasta added to your order. You can add more or type 99 to checkout.",
+                "bot"
+              );
+            } else if (input == "99") {
+              // Send order request with itemId and sessionId
+              if (currentOrder.length > 0) {
+                fetch("http://localhost:9000/start-order", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    itemId: currentOrder, // Send the current order
+                  }),
+                })
+                  .then((response) => response.json())
+                  .then((data) => {
+                    displayMessage(data.message, "bot"); // Show bot response
+                  })
+                  .catch((error) => console.error("Error:", error));
+
+                session.state = "start";
+              } else {
+                displayMessage("No order to place", "bot");
+                session.state = "start";
+              }
+            } else if (input == "0") {
+              currentOrder = [];
+              displayMessage("Order cancelled.", "bot");
+              session.state = "start";
+            } else {
+              displayMessage("Invalid item. Please select again.", "bot");
+            }
+            break;
+        }
+      }
+    </script>
+  </body>
+</html>
